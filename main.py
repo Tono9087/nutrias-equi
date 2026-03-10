@@ -6,6 +6,15 @@ import network
 import socket
 import json
 import time
+
+# urequests puede no estar disponible en todos los builds; es muy común en
+# MicroPython con soporte de red (esp32/esp8266).  Si no existe, la sección
+# de envío a la nube se desactivará automáticamente.
+try:
+    import urequests
+except ImportError:
+    urequests = None
+
 from config import *
 
 # ===== CONFIGURACIÓN DEL SENSOR =====
@@ -164,6 +173,27 @@ else:
     # Iniciar servidor
     servidor = iniciar_servidor()
     
+    # opcional: obtener configuración desde la nube (umbral, preferencias, etc.)
+    if urequests and BACKEND_URL:
+        try:
+            print('Solicitando configuración al backend...')
+            conf_url = BACKEND_URL.rstrip('/') + '/api/peluches/' + PELUCHE_ID
+            resp = urequests.get(conf_url)
+            if resp.status_code == 200:
+                conf_data = resp.json()
+                if conf_data.get('success') and conf_data.get('data'):
+                    cfg = conf_data['data']
+                    # actualizar umbrales si vienen
+                    if 'umbralAlerta' in cfg:
+                        UMBRAL_ALERTA = cfg['umbralAlerta']
+                    if 'umbralCrisis' in cfg:
+                        # asumiendo que almacenas también este valor
+                        UMBRAL_CRISIS = cfg['umbralCrisis']
+                    print('Configuración remota aplicada:', cfg)
+            resp.close()
+        except Exception as econf:
+            print('No se pudo obtener configuración remota:', econf)
+    
     print('\n' + '='*40)
     print('Sistema listo!')
     print('Peluche:', PELUCHE_NOMBRE, '(' + PELUCHE_ID + ')')
@@ -194,9 +224,19 @@ else:
                 'timestamp': time.time()
             }
             
-            # Enviar respuesta
+            # Enviar respuesta local
             respuesta = generar_respuesta_http(datos)
             cliente.send(respuesta.encode())
+
+            # también intentar enviar la lectura al backend en la nube
+            if urequests and BACKEND_URL:
+                try:
+                    url = BACKEND_URL.rstrip('/') + '/api/sensor-data'
+                    hdr = {'Content-Type': 'application/json'}
+                    resp = urequests.post(url, data=json.dumps(datos), headers=hdr)
+                    resp.close()
+                except Exception as ec:
+                    print('Error enviando datos a la nube:', ec)
             
             # Cerrar conexión
             cliente.close()

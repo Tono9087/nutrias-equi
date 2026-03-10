@@ -105,7 +105,32 @@ Ver guía completa en [`ESP32_SETUP.md`](./ESP32_SETUP.md)
 npm start
 ```
 Abre [http://localhost:3000](http://localhost:3000)
+#### Uso con ESP32 / Peluche
+El firmware del ESP32 (`main.py`, `config.py`) puede servir una API
+HTTP local o enviar sus lecturas a la nube. Para que la aplicación web y
+el peluche "hablen" entre sí, el dispositivo **debe apuntar al mismo
+endpoint de Vercel**:
 
+1. Ajusta `config(1).py` en el ESP32:
+   ```python
+   BACKEND_URL = 'https://nutrias-equilibrio.vercel.app'
+   PELUCHE_ID = 'NUTRIA-XXXXXX'  # coincide con el código vinculado
+   WIFI_SSID = 'tu-red'
+   WIFI_PASSWORD = 'tu-contraseña'
+   ```
+
+2. Cuando el ESP32 arranque se conectará a tu red WiFi y a la API en la
+   nube. Cada vez que lea el sensor enviará automáticamente un POST a
+   `/api/sensor-data`, de modo que la interfaz web podrá mostrar esas
+   lecturas en tiempo real.
+
+3. Si quieres que el peluche también adopte los umbrales configurados en
+   la web, el firmware intentará descargar la configuración desde
+   `/api/peluches/<ID>` y ajustará los valores `UMBRAL_ALERTA` y
+   `UMBRAL_CRISIS`.
+
+Esto permite que ambos extremos compartan la misma dirección y trabajen
+juntos; no hace falta tocar el código del front-end.
 ### 6. Deploy a Producción
 ```bash
 npm run build

@@ -28,6 +28,13 @@ UMBRAL_CRISIS = 80   # 60-80%: Ansiedad moderada
 # ===== CONFIGURACIÓN DEL SERVIDOR =====
 PUERTO_API = 80  # Puerto HTTP estándar
 
+# ===== CONEXIÓN A LA NUBE =====
+# URL base de la API en Vercel o el servicio que almacena los datos del
+# peluche. El ESP32 enviará sus lecturas a esta dirección para que la
+# aplicación web pueda mostrarlas en tiempo real.
+# Debe incluir el protocolo (http:// o https://) y no llevar barra final.
+BACKEND_URL = 'https://nutrias-equilibrio.vercel.app'
+
 # ===== CONFIGURACIÓN DE MUESTREO =====
 # Frecuencia de lectura del sensor (en segundos)
 INTERVALO_LECTURA = 0.1
