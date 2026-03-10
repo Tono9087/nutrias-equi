@@ -92,7 +92,7 @@ export const obtenerLecturasRecientes = async (codigoPeluche, limite = 100) => {
       const text = await resp.text();
       throw new Error(
         `Respuesta inesperada (content-type=${contentType}): ${text.slice(0, 100)}...` +
-          '\nAsegúrate de ejecutar las funciones de la API (ej. `vercel dev`).`
+        `\nAsegúrate de ejecutar las funciones de la API (ej. \`vercel dev\`).`
       );
     }
     const data = await resp.json();
