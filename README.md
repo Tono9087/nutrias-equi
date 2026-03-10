@@ -135,11 +135,9 @@ nutrias-equilibrio/
 │   │   ├── Dashboard.js        # Dashboard con gráficas
 │   │   └── MonitoreoTiempoReal.js  # Monitoreo en vivo
 │   ├── App.js                  # Componente principal
-│   ├── firebaseConfig.js       # Configuración de Firebase
 │   ├── pelucheUtils.js         # Funciones de manejo de datos
 │   └── soundManager.js         # Gestor de audio
 ├── ESP32_SETUP.md              # Guía de configuración del ESP32
-├── FIREBASE_SETUP.md           # Guía de configuración de Firebase
 ├── ENCUESTA_CONFIG.md          # Configuración de encuestas
 └── README.md                   # Este archivo
 ```
