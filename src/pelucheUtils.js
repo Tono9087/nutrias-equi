@@ -37,9 +37,20 @@ export const obtenerConfiguracionPeluche = async (codigoPeluche) => {
     const resp = await fetch(`/api/peluches/${codigoPeluche}`);
 
     // si el servidor responde con error HTTP lo convertimos en excepción
+    // esto también cubre el caso de CRA dev server que devuelve index.html con
+    // 404/200, por lo que comprobamos el tipo de contenido antes de parsear.
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`HTTP ${resp.status} ${resp.statusText} – ${text}`);
+    }
+
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await resp.text();
+      throw new Error(
+        `Respuesta inesperada (content-type=${contentType}): ${text.slice(0, 100)}...` +
+          '\n¿Tienes el backend de Vercel ejecutándose? Use `vercel dev` en local.'
+      );
     }
 
     const data = await resp.json();
@@ -75,6 +86,14 @@ export const obtenerLecturasRecientes = async (codigoPeluche, limite = 100) => {
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`HTTP ${resp.status} ${resp.statusText} – ${text}`);
+    }
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await resp.text();
+      throw new Error(
+        `Respuesta inesperada (content-type=${contentType}): ${text.slice(0, 100)}...` +
+          '\nAsegúrate de ejecutar las funciones de la API (ej. `vercel dev`).`
+      );
     }
     const data = await resp.json();
     return data;
