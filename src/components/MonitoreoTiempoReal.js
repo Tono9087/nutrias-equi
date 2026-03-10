@@ -35,6 +35,7 @@ const MonitoreoTiempoReal = () => {
         setMostrarAlerta(false);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presionActual, configuracion]);
 
   const iniciarMonitoreo = async (codigo) => {
