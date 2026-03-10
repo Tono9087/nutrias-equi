@@ -28,6 +28,15 @@ export const vincularPeluche = async (codigoPeluche, configuracion) => {
     return { success: true, codigo: codigoPeluche };
   } catch (error) {
     console.error('Error al vincular peluche:', error);
+    // Si el problema son reglas de seguridad de Firebase, el objeto error
+    // suele incluir code "PERMISSION_DENIED".
+    if (error.code === 'PERMISSION_DENIED') {
+      return {
+        success: false,
+        error:
+          'Permiso denegado: revisa las reglas de Realtime Database en la consola de Firebase.'
+      };
+    }
     return { success: false, error: error.message };
   }
 };
@@ -44,6 +53,13 @@ export const obtenerConfiguracionPeluche = async (codigoPeluche) => {
     }
   } catch (error) {
     console.error('Error al obtener configuración:', error);
+    if (error.code === 'PERMISSION_DENIED') {
+      return {
+        success: false,
+        error:
+          'Permiso denegado: verifica las reglas de la base de datos en Firebase.'
+      };
+    }
     return { success: false, error: error.message };
   }
 };
