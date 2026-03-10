@@ -41,6 +41,14 @@ const VincularPeluche = () => {
       setVinculado(true);
       // Guardar código en localStorage para acceso rápido
       localStorage.setItem('codigoPelucheActual', codigoPeluche);
+      // también guardamos la configuración para poder reutilizarla si la API
+      // se reinicia (las funciones de Vercel no mantienen memoria entre
+      // invocaciones).  Esto hará que el monitoreo funcione aunque el
+      // servidor pierda el dato.
+      localStorage.setItem(
+        `configuracion_${codigoPeluche}`,
+        JSON.stringify(configuracion)
+      );
     } else {
       setError(resultado.error || 'Error al vincular peluche');
     }

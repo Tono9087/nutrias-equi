@@ -48,12 +48,21 @@ const MonitoreoTiempoReal = () => {
 
   const iniciarMonitoreo = async (codigo) => {
     // cuando iniciamos monitoreo pedimos configuración y datos
-    const config = await obtenerConfiguracionPeluche(codigo);
+    let config = await obtenerConfiguracionPeluche(codigo);
 
     if (!config.success) {
-      console.warn('No se pudo obtener la configuración:', config.error);
-      alert(`Error al recuperar la configuración: ${config.error}`);
-      return;
+      console.warn('No se pudo obtener la configuración del servidor:', config.error);
+      // intentemos cargar el JSON que guardamos en localStorage cuando
+      // vinculamos el peluche; en un entorno serverless la memoria se pierde
+      // entre llamadas, así que esto es normal.
+      const almacenada = localStorage.getItem(`configuracion_${codigo}`);
+      if (almacenada) {
+        console.info('Usando configuración almacenada en localStorage');
+        config = { success: true, data: JSON.parse(almacenada) };
+      } else {
+        alert(`Error al recuperar la configuración: ${config.error}`);
+        return;
+      }
     }
 
     setConfiguracion(config.data);
