@@ -1,6 +1,5 @@
 
-import { database } from './firebaseConfig';
-import { ref, set, get, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+// las operaciones ahora se realizan a través de endpoints propios
 
 
 export const generarCodigoPeluche = () => {
@@ -15,28 +14,19 @@ export const generarCodigoPeluche = () => {
 
 export const vincularPeluche = async (codigoPeluche, configuracion) => {
   try {
-    const pelucheRef = ref(database, `peluches/${codigoPeluche}`);
-    await set(pelucheRef, {
-      codigo: codigoPeluche,
-      nombreUsuario: configuracion.nombreUsuario || 'Usuario',
-      contactosEmergencia: configuracion.contactosEmergencia || [],
-      umbralAlerta: configuracion.umbralAlerta || 70,
-      preferenciasSonido: configuracion.preferenciasSonido || 'naturaleza',
-      fechaVinculacion: new Date().toISOString(),
-      activo: true
+    const resp = await fetch('/api/peluches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo: codigoPeluche, configuracion })
     });
-    return { success: true, codigo: codigoPeluche };
+    const data = await resp.json();
+    if (data.success) {
+      return { success: true, codigo: codigoPeluche };
+    } else {
+      return { success: false, error: data.error || 'error' };
+    }
   } catch (error) {
     console.error('Error al vincular peluche:', error);
-    // Si el problema son reglas de seguridad de Firebase, el objeto error
-    // suele incluir code "PERMISSION_DENIED".
-    if (error.code === 'PERMISSION_DENIED') {
-      return {
-        success: false,
-        error:
-          'Permiso denegado: revisa las reglas de Realtime Database en la consola de Firebase.'
-      };
-    }
     return { success: false, error: error.message };
   }
 };
@@ -44,22 +34,11 @@ export const vincularPeluche = async (codigoPeluche, configuracion) => {
 
 export const obtenerConfiguracionPeluche = async (codigoPeluche) => {
   try {
-    const pelucheRef = ref(database, `peluches/${codigoPeluche}`);
-    const snapshot = await get(pelucheRef);
-    if (snapshot.exists()) {
-      return { success: true, data: snapshot.val() };
-    } else {
-      return { success: false, error: 'Peluche no encontrado' };
-    }
+    const resp = await fetch(`/api/peluches/${codigoPeluche}`);
+    const data = await resp.json();
+    return data;
   } catch (error) {
     console.error('Error al obtener configuración:', error);
-    if (error.code === 'PERMISSION_DENIED') {
-      return {
-        success: false,
-        error:
-          'Permiso denegado: verifica las reglas de la base de datos en Firebase.'
-      };
-    }
     return { success: false, error: error.message };
   }
 };
@@ -67,27 +46,13 @@ export const obtenerConfiguracionPeluche = async (codigoPeluche) => {
 
 export const guardarLecturaSensor = async (codigoPeluche, presion) => {
   try {
-    // Filtrar: solo guardar registros altos (>= 30)
-    // Categorías: Bajo (<=15), Mediano (>15 y <30), Alto (>=30)
-    if (presion < 30) {
-      return {
-        success: false,
-        message: 'Lectura descartada: no alcanza categoría alta (requiere >= 30)',
-        filtrado: true,
-        porcentaje: presion,
-        umbral: 30
-      };
-    }
-
-    const lecturaRef = ref(database, `lecturas/${codigoPeluche}`);
-    const nuevaLectura = push(lecturaRef);
-    await set(nuevaLectura, {
-      presion: presion,
-      timestamp: new Date().toISOString(),
-      fecha: new Date().toLocaleDateString('es-MX'),
-      hora: new Date().toLocaleTimeString('es-MX')
+    const resp = await fetch('/api/sensor-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pelucheId: codigoPeluche, presion })
     });
-    return { success: true };
+    const data = await resp.json();
+    return data;
   } catch (error) {
     console.error('Error al guardar lectura:', error);
     return { success: false, error: error.message };
@@ -97,19 +62,9 @@ export const guardarLecturaSensor = async (codigoPeluche, presion) => {
 
 export const obtenerLecturasRecientes = async (codigoPeluche, limite = 100) => {
   try {
-    const lecturasRef = ref(database, `lecturas/${codigoPeluche}`);
-    const lecturasQuery = query(lecturasRef, orderByChild('timestamp'), limitToLast(limite));
-    const snapshot = await get(lecturasQuery);
-
-    if (snapshot.exists()) {
-      const lecturas = [];
-      snapshot.forEach((childSnapshot) => {
-        lecturas.push({ id: childSnapshot.key, ...childSnapshot.val() });
-      });
-      return { success: true, data: lecturas.reverse() };
-    } else {
-      return { success: true, data: [] };
-    }
+    const resp = await fetch(`/api/lecturas/${codigoPeluche}?limit=${limite}`);
+    const data = await resp.json();
+    return data;
   } catch (error) {
     console.error('Error al obtener lecturas:', error);
     return { success: false, error: error.message };
@@ -118,16 +73,21 @@ export const obtenerLecturasRecientes = async (codigoPeluche, limite = 100) => {
 
 
 export const escucharLecturasEnTiempoReal = (codigoPeluche, callback) => {
-  const lecturasRef = ref(database, `lecturas/${codigoPeluche}`);
-  const lecturasQuery = query(lecturasRef, orderByChild('timestamp'), limitToLast(1));
-
-  return onValue(lecturasQuery, (snapshot) => {
-    if (snapshot.exists()) {
-      const datos = snapshot.val();
-      const ultimaLectura = Object.values(datos)[0];
-      callback(ultimaLectura);
+  // abrimos una conexión SSE al servidor
+  const src = new EventSource(`/api/monitor/${codigoPeluche}`);
+  src.onmessage = (e) => {
+    try {
+      const lectura = JSON.parse(e.data);
+      callback(lectura);
+    } catch (err) {
+      console.error('error parseando evento SSE', err);
     }
-  });
+  };
+  src.onerror = () => {
+    console.error('SSE connection error');
+    src.close();
+  };
+  return () => src.close();
 };
 
 

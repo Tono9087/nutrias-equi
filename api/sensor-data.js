@@ -4,45 +4,21 @@
 // IMPORTANTE: Este es un endpoint serverless de Vercel.
 // Para usarlo en desarrollo local: npm install -g vercel && vercel dev
 
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getDatabase } from 'firebase-admin/database';
+import { getPeluche, addLectura } from './storage';
 
-// Inicializar Firebase Admin (solo una vez)
-if (!getApps().length) {
-  // OPCIÓN 1: Usando variables de entorno (RECOMENDADO para producción)
-  // Configura estas variables en Vercel Dashboard > Settings > Environment Variables
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    initializeApp({
-      credential: cert(serviceAccount),
-      databaseURL: process.env.FIREBASE_DATABASE_URL
-    });
-  } else {
-    // OPCIÓN 2: Para desarrollo local (no usar en producción)
-    // Descarga el archivo de credenciales desde Firebase Console
-    initializeApp({
-      databaseURL: "https://TU_PROJECT_ID-default-rtdb.firebaseio.com"
-    });
-  }
-}
-
-const db = getDatabase();
-
-// Función para validar el código del peluche
+// Valida el formato del código de peluche
 function validarCodigoPeluche(codigo) {
   if (!codigo || typeof codigo !== 'string') {
     return false;
   }
-  // Formato esperado: NUTRIA-XXXXXX (letras y números)
   const regex = /^NUTRIA-[A-Z0-9]{6}$/;
   return regex.test(codigo);
 }
 
-// Función para validar el porcentaje de presión
-// El ESP32 ya envía el valor convertido a porcentaje (0-100%)
+// Valida que la presión sea un número entre 0 y 100
 function validarPresion(presion) {
   const num = Number(presion);
-  return !isNaN(num) && num >= 0 && num <= 100; // Porcentaje de fuerza
+  return !isNaN(num) && num >= 0 && num <= 100;
 }
 
 // Handler del endpoint
@@ -100,20 +76,17 @@ export default async function handler(req, res) {
       });
     }
 
-    // Verificar que el peluche existe en la base de datos
-    const pelucheRef = db.ref(`peluches/${pelucheId}`);
-    const pelucheSnapshot = await pelucheRef.once('value');
-
-    if (!pelucheSnapshot.exists()) {
+    // Verificar que el peluche existe en el almacenamiento en memoria
+    const peluche = getPeluche(pelucheId);
+    if (!peluche) {
       return res.status(404).json({
         success: false,
         error: 'Peluche no encontrado. Por favor vincúlalo primero en la aplicación web.'
       });
     }
 
-    // Guardar la lectura en Firebase (solo registros altos >= 30)
-    const lecturaRef = db.ref(`lecturas/${pelucheId}`).push();
-    await lecturaRef.set({
+    // Guardar la lectura en el almacenamiento local (solo registros altos >= 30)
+    addLectura(pelucheId, {
       presion: porcentajeFuerza,
       timestamp: new Date().toISOString(),
       fecha: new Date().toLocaleDateString('es-MX'),

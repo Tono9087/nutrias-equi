@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import YouTube from 'react-youtube';
 import { escucharLecturasEnTiempoReal, obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
 import { gestorAudio, sonidosDisponibles, videosYouTube } from '../soundManager';
 
 const MonitoreoTiempoReal = () => {
   const [codigoPeluche, setCodigoPeluche] = useState('');
+  const unsubscribeRef = useRef(null);
   const [presionActual, setPresionActual] = useState(0);
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
   const [configuracion, setConfiguracion] = useState(null);
@@ -23,6 +24,13 @@ const MonitoreoTiempoReal = () => {
     }
   }, []);
 
+  // limpiar suscripción SSE al desmontar
+  useEffect(() => {
+    return () => {
+      if (unsubscribeRef.current) unsubscribeRef.current();
+    };
+  }, []);
+
   useEffect(() => {
     // Verificar si se debe activar alerta
     if (configuracion && presionActual >= configuracion.umbralAlerta) {
@@ -39,7 +47,7 @@ const MonitoreoTiempoReal = () => {
   }, [presionActual, configuracion]);
 
   const iniciarMonitoreo = async (codigo) => {
-    
+    // cuando iniciamos monitoreo pedimos configuración y datos
     const config = await obtenerConfiguracionPeluche(codigo);
     if (config.success) {
       setConfiguracion(config.data);
@@ -56,7 +64,7 @@ const MonitoreoTiempoReal = () => {
       }
 
       
-      escucharLecturasEnTiempoReal(codigo, (lectura) => {
+      unsubscribeRef.current = escucharLecturasEnTiempoReal(codigo, (lectura) => {
         setPresionActual(lectura.presion);
         setUltimaActualizacion(lectura.timestamp);
         // Agregar al historial

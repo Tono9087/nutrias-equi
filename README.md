@@ -59,11 +59,9 @@ Nutrias en Equilibrio es un proyecto que combina hardware (ESP32 + sensor FSR) c
 - **React** 19.2.0 - Framework UI
 - **Recharts** 2.10.3 - Gráficas y visualización de datos
 - **React YouTube** 10.1.0 - Integración de videos
-- **Firebase** 10.7.1 - Base de datos en tiempo real
 
 ### Backend
-- **Vercel Serverless Functions** - API endpoints
-- **Firebase Admin** 12.0.0 - Gestión de base de datos
+- **Vercel Serverless Functions** - API endpoints (almacenamiento en memoria)
 
 ### Hardware
 - **ESP32** - Microcontrolador con WiFi
@@ -77,7 +75,6 @@ Nutrias en Equilibrio es un proyecto que combina hardware (ESP32 + sensor FSR) c
 ### Prerequisitos
 - Node.js 16.x o superior
 - npm o yarn
-- Cuenta de Firebase
 - Cuenta de Vercel (para deployment)
 - ESP32 y sensor FSR (para hardware)
 
@@ -92,14 +89,8 @@ cd nutrias-equilibrio
 npm install
 ```
 
-### 3. Configurar Firebase
-Ver guía completa en [`FIREBASE_SETUP.md`](./FIREBASE_SETUP.md)
-
-**Resumen:**
-1. Crear proyecto en [Firebase Console](https://console.firebase.google.com/)
-2. Activar Realtime Database
-3. Obtener credenciales web
-4. Editar `src/firebaseConfig.js` con tus credenciales
+### 3. Configuración de la API
+No se requiere servicio externo: los datos se mantienen en memoria en los endpoints de la carpeta `/api`. Basta con ejecutar el proyecto en desarrollo o desplegar en Vercel.
 
 ### 4. Configurar ESP32
 Ver guía completa en [`ESP32_SETUP.md`](./ESP32_SETUP.md)
@@ -230,21 +221,18 @@ Indicador de presión actual con alertas y controles de audio.
 
 ## 🔐 Seguridad y Privacidad
 
-- Los datos se almacenan en Firebase Realtime Database
+- Los datos se almacenan en memoria en los endpoints del servidor (no persistentes entre reinicios)
 - Cada peluche tiene un código único
 - No se requiere autenticación de usuario (por diseño)
-- Datos son anónimos (solo alias opcional)
-- Reglas de Firebase configurables para producción
+- El servidor no impone reglas más allá de validar el formato de código
 
 ---
 
 ## 📊 Límites y Consideraciones
 
-### Firebase (Plan Gratuito)
-- 50,000 lecturas/día
-- 20,000 escrituras/día
-- 1 GB almacenamiento
-- **Recomendación:** Enviar datos cada 2-5 segundos
+### Almacenamiento en memoria
+- No hay límites reales, pero los datos se pierden al reiniciar el servidor
+- **Recomendación:** Implementar persistencia (fichero, base de datos) si se requiere continuidad
 
 ### Vercel (Plan Gratuito)
 - 100 GB bandwidth/mes
@@ -261,7 +249,7 @@ Indicador de presión actual con alertas y controles de audio.
 - Confirmar que el peluche esté vinculado en la web
 
 ### No aparecen gráficas
-- Verificar que haya datos en Firebase
+- Verificar que haya datos enviados al servidor (revisa respuesta de `/api/lecturas/:id`)
 - Asegurarse de usar el código correcto
 - Revisar consola del navegador para errores
 
