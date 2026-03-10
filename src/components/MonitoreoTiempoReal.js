@@ -49,28 +49,32 @@ const MonitoreoTiempoReal = () => {
   const iniciarMonitoreo = async (codigo) => {
     // cuando iniciamos monitoreo pedimos configuración y datos
     const config = await obtenerConfiguracionPeluche(codigo);
-    if (config.success) {
-      setConfiguracion(config.data);
-      setConectado(true);
 
-      // Cargar últimas 10 lecturas
-      const lecturas = await obtenerLecturasRecientes(codigo, 10);
-      if (lecturas.success) {
-        setHistorialReciente(lecturas.data);
-        if (lecturas.data.length > 0) {
-          setPresionActual(lecturas.data[0].presion);
-          setUltimaActualizacion(lecturas.data[0].timestamp);
-        }
-      }
-
-      
-      unsubscribeRef.current = escucharLecturasEnTiempoReal(codigo, (lectura) => {
-        setPresionActual(lectura.presion);
-        setUltimaActualizacion(lectura.timestamp);
-        // Agregar al historial
-        setHistorialReciente(prev => [lectura, ...prev.slice(0, 9)]);
-      });
+    if (!config.success) {
+      console.warn('No se pudo obtener la configuración:', config.error);
+      alert(`Error al recuperar la configuración: ${config.error}`);
+      return;
     }
+
+    setConfiguracion(config.data);
+    setConectado(true);
+
+    // Cargar últimas 10 lecturas
+    const lecturas = await obtenerLecturasRecientes(codigo, 10);
+    if (lecturas.success) {
+      setHistorialReciente(lecturas.data);
+      if (lecturas.data.length > 0) {
+        setPresionActual(lecturas.data[0].presion);
+        setUltimaActualizacion(lecturas.data[0].timestamp);
+      }
+    }
+
+    unsubscribeRef.current = escucharLecturasEnTiempoReal(codigo, (lectura) => {
+      setPresionActual(lectura.presion);
+      setUltimaActualizacion(lectura.timestamp);
+      // Agregar al historial
+      setHistorialReciente(prev => [lectura, ...prev.slice(0, 9)]);
+    });
   };
 
   const activarSonidoEmergencia = () => {

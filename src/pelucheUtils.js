@@ -35,11 +35,20 @@ export const vincularPeluche = async (codigoPeluche, configuracion) => {
 export const obtenerConfiguracionPeluche = async (codigoPeluche) => {
   try {
     const resp = await fetch(`/api/peluches/${codigoPeluche}`);
+
+    // si el servidor responde con error HTTP lo convertimos en excepción
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status} ${resp.statusText} – ${text}`);
+    }
+
     const data = await resp.json();
     return data;
   } catch (error) {
+    // algunos navegadores pueden lanzar "Permission denied" cuando bloquean la
+    // petición por CORS/seguridad. Se captura aquí para evitar que la app crashee.
     console.error('Error al obtener configuración:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || String(error) };
   }
 };
 
@@ -63,11 +72,15 @@ export const guardarLecturaSensor = async (codigoPeluche, presion) => {
 export const obtenerLecturasRecientes = async (codigoPeluche, limite = 100) => {
   try {
     const resp = await fetch(`/api/lecturas/${codigoPeluche}?limit=${limite}`);
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status} ${resp.statusText} – ${text}`);
+    }
     const data = await resp.json();
     return data;
   } catch (error) {
     console.error('Error al obtener lecturas:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || String(error) };
   }
 };
 
