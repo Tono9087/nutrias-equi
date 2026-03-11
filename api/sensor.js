@@ -19,7 +19,10 @@ export default async function handler(req, res) {
   // GET — return latest reading from Redis
   if (req.method === 'GET') {
     try {
+      console.log('[DEBUG API GET] La web esta preguntando por los datos');
       const data = await redis.get('lastReading');
+      console.log('[DEBUG API GET] Datos leidos de Redis:', data);
+      
       if (!data) {
         return res.status(200).json({ device_id: null, pressure: 0, timestamp: null });
       }
@@ -32,13 +35,18 @@ export default async function handler(req, res) {
 
   // POST — store new reading into Redis
   if (req.method === 'POST') {
+    console.log('[DEBUG API POST] Llego POST desde el peluche!');
+    console.log('[DEBUG API POST] Cuerpo:', req.body);
+
     const { device_id, pressure } = req.body || {};
 
     if (!device_id || typeof device_id !== 'string') {
+      console.log('[DEBUG API POST] Rechazado: Falta string device_id');
       return res.status(400).json({ success: false, error: 'device_id is required (string)' });
     }
 
     if (pressure === undefined || pressure === null || typeof pressure !== 'number') {
+      console.log('[DEBUG API POST] Rechazado: Falta numero pressure');
       return res.status(400).json({ success: false, error: 'pressure is required (number)' });
     }
 
@@ -47,6 +55,8 @@ export default async function handler(req, res) {
       pressure,
       timestamp: Date.now()
     };
+    
+    console.log('[DEBUG API POST] Guardando en Redis:', payload);
 
     try {
       // Guardar el objeto en la llave "lastReading" en Redis
