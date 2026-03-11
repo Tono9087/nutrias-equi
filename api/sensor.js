@@ -1,12 +1,12 @@
 // API Endpoint: GET + POST /api/sensor
 // Stores and returns the latest pressure reading using Upstash Redis.
-import { Redis } from '@upstash/redis';
+const { Redis } = require('@upstash/redis');
 
 // Initialize Redis from Environment Variables 
 // (KV_REST_API_URL and KV_REST_API_TOKEN)
 const redis = Redis.fromEnv();
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
