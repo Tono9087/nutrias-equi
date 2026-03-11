@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
 import { gestorAudio, sonidosDisponibles, videosYouTube } from '../soundManager';
