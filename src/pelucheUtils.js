@@ -104,23 +104,7 @@ export const obtenerLecturasRecientes = async (codigoPeluche, limite = 100) => {
 };
 
 
-export const escucharLecturasEnTiempoReal = (codigoPeluche, callback) => {
-  // abrimos una conexión SSE al servidor
-  const src = new EventSource(`/api/monitor/${codigoPeluche}`);
-  src.onmessage = (e) => {
-    try {
-      const lectura = JSON.parse(e.data);
-      callback(lectura);
-    } catch (err) {
-      console.error('error parseando evento SSE', err);
-    }
-  };
-  src.onerror = () => {
-    console.error('SSE connection error');
-    src.close();
-  };
-  return () => src.close();
-};
+// escucharLecturasEnTiempoReal removed — monitoring now uses polling via sensorApi.js
 
 
 export const obtenerEstadisticasDia = async (codigoPeluche) => {

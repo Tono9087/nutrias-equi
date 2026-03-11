@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import YouTube from 'react-youtube';
-import { escucharLecturasEnTiempoReal, obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
+import { obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
 import { gestorAudio, sonidosDisponibles, videosYouTube } from '../soundManager';
+import { getLatestSensorReading } from '../services/sensorApi';
 
 const MonitoreoTiempoReal = () => {
   const [codigoPeluche, setCodigoPeluche] = useState('');
-  const unsubscribeRef = useRef(null);
   const [presionActual, setPresionActual] = useState(0);
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
   const [configuracion, setConfiguracion] = useState(null);
@@ -24,12 +24,37 @@ const MonitoreoTiempoReal = () => {
     }
   }, []);
 
-  // limpiar suscripción SSE al desmontar
+  // Polling: fetch latest sensor reading every second once connected
   useEffect(() => {
-    return () => {
-      if (unsubscribeRef.current) unsubscribeRef.current();
-    };
-  }, []);
+    if (!conectado) return;
+
+    async function poll() {
+      try {
+        const data = await getLatestSensorReading();
+        if (data.pressure !== null && data.pressure !== undefined) {
+          setPresionActual(data.pressure);
+          setUltimaActualizacion(data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString());
+          // Add to history
+          const lectura = {
+            presion: data.pressure,
+            timestamp: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
+            hora: new Date(data.timestamp || Date.now()).toLocaleTimeString('es-MX')
+          };
+          setHistorialReciente(prev => {
+            // Avoid duplicate if timestamp hasn't changed
+            if (prev.length > 0 && prev[0].timestamp === lectura.timestamp) return prev;
+            return [lectura, ...prev.slice(0, 9)];
+          });
+        }
+      } catch (err) {
+        console.error('Error polling sensor:', err);
+      }
+    }
+
+    poll();
+    const interval = setInterval(poll, 1000);
+    return () => clearInterval(interval);
+  }, [conectado]);
 
   useEffect(() => {
     // Verificar si se debe activar alerta
@@ -77,13 +102,7 @@ const MonitoreoTiempoReal = () => {
         setUltimaActualizacion(lecturas.data[0].timestamp);
       }
     }
-
-    unsubscribeRef.current = escucharLecturasEnTiempoReal(codigo, (lectura) => {
-      setPresionActual(lectura.presion);
-      setUltimaActualizacion(lectura.timestamp);
-      // Agregar al historial
-      setHistorialReciente(prev => [lectura, ...prev.slice(0, 9)]);
-    });
+    // Polling is handled by the useEffect above, triggered by setConectado(true)
   };
 
   const activarSonidoEmergencia = () => {
