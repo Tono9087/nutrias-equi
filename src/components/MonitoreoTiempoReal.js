@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
 import { gestorAudio, sonidosDisponibles, videosYouTube } from '../soundManager';
@@ -6,7 +6,6 @@ import { getLatestSensorReading } from '../services/sensorApi';
 
 const MonitoreoTiempoReal = () => {
   const [codigoPeluche, setCodigoPeluche] = useState('');
-  const unsubscribeRef = useRef(null);
   const [presionActual, setPresionActual] = useState(0);
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
   const [configuracion, setConfiguracion] = useState(null);
