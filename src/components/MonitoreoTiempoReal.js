@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import YouTube from 'react-youtube';
-import { escucharLecturasEnTiempoReal, obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
+import { obtenerConfiguracionPeluche, obtenerLecturasRecientes } from '../pelucheUtils';
 import { gestorAudio, sonidosDisponibles, videosYouTube } from '../soundManager';
+import { getLatestSensorReading } from '../services/sensorApi';
 
 const MonitoreoTiempoReal = () => {
   const [codigoPeluche, setCodigoPeluche] = useState('');
@@ -24,12 +25,57 @@ const MonitoreoTiempoReal = () => {
     }
   }, []);
 
-  // limpiar suscripción SSE al desmontar
+  // limpiar suscripción SSE al desmontar (ya no usamos SSE, usamos Polling)
   useEffect(() => {
     return () => {
-      if (unsubscribeRef.current) unsubscribeRef.current();
+      // Cleanup for previous versions, if any
     };
   }, []);
+
+  // POLLING: Consultar la base de datos de Redis cada segundo
+  useEffect(() => {
+    if (!conectado) return;
+
+    let intervalId = null;
+
+    const pollDatos = async () => {
+      try {
+        const data = await getLatestSensorReading();
+        if (data && data.pressure !== undefined && data.pressure !== null) {
+          setPresionActual(data.pressure);
+          const timestampStr = data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString();
+          setUltimaActualizacion(timestampStr);
+          
+          // Agregar al historial si es una lectura diferente
+          const nuevaLectura = {
+            presion: data.pressure,
+            timestamp: timestampStr,
+            hora: new Date(data.timestamp || Date.now()).toLocaleTimeString('es-MX')
+          };
+
+          setHistorialReciente(prev => {
+            // Evitar duplicados si el timestamp es igual al último
+            if (prev.length > 0 && prev[0].timestamp === nuevaLectura.timestamp) {
+              return prev;
+            }
+            return [nuevaLectura, ...prev.slice(0, 9)];
+          });
+        }
+      } catch (err) {
+        console.error('Error al consultar sensorApi:', err);
+      }
+    };
+
+    // Ejecutar inmediatamente
+    pollDatos();
+    
+    // Y luego cada 1 segundo
+    intervalId = setInterval(pollDatos, 1000);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [conectado]);
 
   useEffect(() => {
     // Verificar si se debe activar alerta
@@ -78,12 +124,9 @@ const MonitoreoTiempoReal = () => {
       }
     }
 
-    unsubscribeRef.current = escucharLecturasEnTiempoReal(codigo, (lectura) => {
-      setPresionActual(lectura.presion);
-      setUltimaActualizacion(lectura.timestamp);
-      // Agregar al historial
-      setHistorialReciente(prev => [lectura, ...prev.slice(0, 9)]);
-    });
+    // TODO: Las últimas 10 lecturas podrían fallar si /api/lecturas/[id] no existe en Vercel
+    // pero no bloquean la app si fallan.
+    // El polling se encargará de actualizar los datos en tiempo real.
   };
 
   const activarSonidoEmergencia = () => {
