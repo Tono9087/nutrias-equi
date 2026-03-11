@@ -6,14 +6,14 @@
 # Formato requerido por la API: NUTRIA-XXXXXX (letras mayúsculas y números)
 # Ejemplo válido: NUTRIA-ABC123, NUTRIA-00F9Z7, etc.
 # No utilices guiones bajos ni menos de 6 caracteres después del guion.
-PELUCHE_ID = 'NUTRIA-000000'  # <--- sustituye esto por tu identificador único
+PELUCHE_ID = 'NUTRIA-AB1234'  # ID registrado en la app web
 PELUCHE_NOMBRE = 'Nutria de Tono'
 
 # ===== CREDENCIALES WIFI =====
 # Rellena con el SSID y la contraseña de tu red local.
 # Si dejas estos valores tal como están, el ESP32 no podrá conectarse.
-WIFI_SSID = 'mis-red-wifi'
-WIFI_PASSWORD = 'mi_contraseña_segura'
+WIFI_SSID = 'pobre'
+WIFI_PASSWORD = '123456791011'
 
 # ===== CONFIGURACIÓN DEL SENSOR =====
 PIN_SENSOR = 34  # GPIO34 para lectura analógica
@@ -33,7 +33,7 @@ PUERTO_API = 80  # Puerto HTTP estándar
 # peluche. El ESP32 enviará sus lecturas a esta dirección para que la
 # aplicación web pueda mostrarlas en tiempo real.
 # Debe incluir el protocolo (http:// o https://) y no llevar barra final.
-BACKEND_URL = 'https://nutrias-equilibrio.vercel.app'
+BACKEND_URL = 'https://nutrias-equilibrio-xi.vercel.app'
 
 # ===== CONFIGURACIÓN DE MUESTREO =====
 # Frecuencia de lectura del sensor (en segundos)

@@ -133,31 +133,6 @@ def conectar_wifi():
         print('Verifica SSID y contraseña en config.py')
         return None
 
-def iniciar_servidor():
-    """Inicia el servidor HTTP para la API"""
-    s = socket.socket()
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('0.0.0.0', PUERTO_API))
-    s.listen(1)
-    print('Servidor API activo en puerto', PUERTO_API)
-    return s
-
-def generar_respuesta_http(datos):
-    """Genera la respuesta HTTP con headers CORS"""
-    body = json.dumps(datos)
-    
-    response = """HTTP/1.1 200 OK
-Content-Type: application/json
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: GET, OPTIONS
-Access-Control-Allow-Headers: Content-Type
-Content-Length: {}
-Connection: close
-
-{}""".format(len(body), body)
-    
-    return response
-
 # ===== INICIALIZACIÓN =====
 
 print('\nIniciando sistema...')
@@ -170,10 +145,7 @@ wifi = conectar_wifi()
 if wifi is None:
     print('Sistema detenido: sin conexión WiFi')
 else:
-    # Iniciar servidor
-    servidor = iniciar_servidor()
-    
-    # opcional: obtener configuración desde la nube (umbral, preferencias, etc.)
+    # Obtener configuración desde la nube al arrancar
     if urequests and BACKEND_URL:
         try:
             print('Solicitando configuración al backend...')
@@ -183,71 +155,40 @@ else:
                 conf_data = resp.json()
                 if conf_data.get('success') and conf_data.get('data'):
                     cfg = conf_data['data']
-                    # actualizar umbrales si vienen
                     if 'umbralAlerta' in cfg:
                         UMBRAL_ALERTA = cfg['umbralAlerta']
-                    if 'umbralCrisis' in cfg:
-                        # asumiendo que almacenas también este valor
-                        UMBRAL_CRISIS = cfg['umbralCrisis']
                     print('Configuración remota aplicada:', cfg)
             resp.close()
         except Exception as econf:
             print('No se pudo obtener configuración remota:', econf)
-    
+
     print('\n' + '='*40)
-    print('Sistema listo!')
+    print('Sistema listo! Enviando datos cada segundo...')
     print('Peluche:', PELUCHE_NOMBRE, '(' + PELUCHE_ID + ')')
-    print('Accede a la API en: http://' + wifi.ifconfig()[0])
     print('='*40 + '\n')
-    
-    # ===== LOOP PRINCIPAL =====
+
+    url_sensor = BACKEND_URL.rstrip('/') + '/api/sensor'
+    hdr = {'Content-Type': 'application/json'}
+
+    # ===== LOOP PRINCIPAL: envío activo cada segundo =====
     while True:
         try:
-            # Aceptar conexión
-            cliente, direccion = servidor.accept()
-            
-            # Leer request (opcional, no procesamos el contenido)
-            request = cliente.recv(1024)
-            
-            # Leer presión y detectar estado
             presion = leer_presion()
             estado_info = detectar_estado(presion)
-            
-            # Preparar datos de respuesta con identificador del peluche
-            datos = {
-                'peluche_id': PELUCHE_ID,
-                'peluche_nombre': PELUCHE_NOMBRE,
-                'presion': presion,
-                'estado': estado_info['estado'],
-                'nivel': estado_info['nivel'],
-                'descripcion': estado_info['descripcion'],
-                'timestamp': time.time()
-            }
-            
-            # Enviar respuesta local
-            respuesta = generar_respuesta_http(datos)
-            cliente.send(respuesta.encode())
 
-            # también intentar enviar la lectura al backend en la nube
+            print('[' + PELUCHE_ID + '] Presión:', str(presion) + '% | Estado:', estado_info['estado'])
+
+            # Enviar a Vercel
             if urequests and BACKEND_URL:
                 try:
-                    url = BACKEND_URL.rstrip('/') + '/api/sensor'
-                    hdr = {'Content-Type': 'application/json'}
                     payload = json.dumps({'device_id': PELUCHE_ID, 'pressure': presion})
-                    resp = urequests.post(url, data=payload, headers=hdr)
+                    resp = urequests.post(url_sensor, data=payload, headers=hdr)
                     resp.close()
                 except Exception as ec:
-                    print('Error enviando datos a la nube:', ec)
-            
-            # Cerrar conexión
-            cliente.close()
-            
-            # Debug opcional
-            print('[' + PELUCHE_ID + '] Presión:', str(presion) + '% | Estado:', estado_info['estado'])
-            
+                    print('Error enviando a la nube:', ec)
+
+            time.sleep(1)
+
         except Exception as e:
-            print('Error:', e)
-            try:
-                cliente.close()
-            except:
-                pass
+            print('Error en loop:', e)
+            time.sleep(1)
