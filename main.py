@@ -231,9 +231,10 @@ else:
             # también intentar enviar la lectura al backend en la nube
             if urequests and BACKEND_URL:
                 try:
-                    url = BACKEND_URL.rstrip('/') + '/api/sensor-data'
+                    url = BACKEND_URL.rstrip('/') + '/api/sensor'
                     hdr = {'Content-Type': 'application/json'}
-                    resp = urequests.post(url, data=json.dumps(datos), headers=hdr)
+                    payload = json.dumps({'device_id': PELUCHE_ID, 'pressure': presion})
+                    resp = urequests.post(url, data=payload, headers=hdr)
                     resp.close()
                 except Exception as ec:
                     print('Error enviando datos a la nube:', ec)
