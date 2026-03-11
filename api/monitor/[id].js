@@ -1,26 +1,14 @@
-import { onNewLectura, removeLecturaListener } from '../storage';
-
-export default function handler(req, res) {
-  const {
-    query: { id }
-  } = req;
-
+// SSE monitor endpoint - Not supported on Vercel serverless.
+// The frontend now uses polling via /api/sensor instead.
+// This endpoint is kept for backwards compatibility but does nothing.
+module.exports = function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).end();
   }
-
-  // cabeceras SSE
+  // Return empty SSE stream that closes immediately
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-
-  const listener = (lectura) => {
-    res.write(`data: ${JSON.stringify(lectura)}\n\n`);
-  };
-
-  onNewLectura(id, listener);
-
-  req.on('close', () => {
-    removeLecturaListener(id, listener);
-  });
-}
+  res.write(': SSE not supported on Vercel serverless. Use polling via /api/sensor.\n\n');
+  res.end();
+};

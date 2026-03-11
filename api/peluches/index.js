@@ -1,10 +1,10 @@
-import { addPeluche, getPeluche } from '../storage';
+const { addPeluche, getPeluche } = require('../storage');
 
 function validarCodigo(codigo) {
   return typeof codigo === 'string' && /^NUTRIA-[A-Z0-9]{6}$/.test(codigo);
 }
 
-export default function handler(req, res) {
+module.exports = async function handler(req, res) {
   // POST /api/peluches -> crea o actualiza configuración del peluche
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Sólo POST' });
@@ -12,9 +12,7 @@ export default function handler(req, res) {
 
   const { codigo, configuracion } = req.body;
   if (!validarCodigo(codigo)) {
-    return res
-      .status(400)
-      .json({ success: false, error: 'Código de peluche inválido' });
+    return res.status(400).json({ success: false, error: 'Código de peluche inválido' });
   }
 
   const configObj = {
@@ -26,11 +24,6 @@ export default function handler(req, res) {
     activo: true
   };
 
-  const existing = getPeluche(codigo);
-  if (existing) {
-    // sobreescribimos configuración
-  }
-
-  addPeluche(codigo, configObj);
+  await addPeluche(codigo, configObj);
   return res.status(200).json({ success: true, data: configObj });
-}
+};

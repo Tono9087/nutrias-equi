@@ -1,43 +1,39 @@
-// Simple in-memory storage with SSE support
-import EventEmitter from 'events';
+// Persistent storage using Upstash Redis
+// Replaces the previous in-memory implementation which reset on every
+// Vercel serverless cold start.
+const { Redis } = require('@upstash/redis');
 
-const peluches = {};
-const lecturas = {}; // { [pelucheId]: [lectura, ...] }
-const emitter = new EventEmitter();
+const redis = Redis.fromEnv();
 
-// Peluche helpers
-export function getPeluche(id) {
-  return peluches[id] || null;
+// ─── Peluche helpers ───────────────────────────────────────────────────────
+
+async function getPeluche(id) {
+  return await redis.get(`peluche:${id}`);
 }
 
-export function addPeluche(id, config) {
-  peluches[id] = { ...config, codigo: id };
-  return peluches[id];
+async function addPeluche(id, config) {
+  const data = { ...config, codigo: id };
+  await redis.set(`peluche:${id}`, data);
+  return data;
 }
 
-// Lecturas helpers
-export function getLecturas(id) {
-  return lecturas[id] || [];
+// ─── Lecturas helpers ──────────────────────────────────────────────────────
+
+async function getLecturas(id) {
+  const data = await redis.lrange(`lecturas:${id}`, 0, -1);
+  return data || [];
 }
 
-export function addLectura(id, lectura) {
-  if (!lecturas[id]) lecturas[id] = [];
-  lecturas[id].push(lectura);
-  // notify listeners
-  emitter.emit(`lectura:${id}`, lectura);
+async function addLectura(id, lectura) {
+  await redis.lpush(`lecturas:${id}`, lectura);
+  // Keep only latest 1000 readings
+  await redis.ltrim(`lecturas:${id}`, 0, 999);
   return lectura;
 }
 
-export function getLatestLectura(id) {
-  const arr = lecturas[id];
-  return arr && arr.length ? arr[arr.length - 1] : null;
+async function getLatestLectura(id) {
+  const arr = await redis.lrange(`lecturas:${id}`, 0, 0);
+  return arr && arr.length ? arr[0] : null;
 }
 
-// SSE helpers
-export function onNewLectura(id, cb) {
-  emitter.on(`lectura:${id}`, cb);
-}
-
-export function removeLecturaListener(id, cb) {
-  emitter.off(`lectura:${id}`, cb);
-}
+module.exports = { getPeluche, addPeluche, getLecturas, addLectura, getLatestLectura };

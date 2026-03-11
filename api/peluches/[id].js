@@ -1,12 +1,10 @@
-import { getPeluche } from '../storage';
+const { getPeluche } = require('../storage');
 
-export default function handler(req, res) {
-  const {
-    query: { id }
-  } = req;
+module.exports = async function handler(req, res) {
+  const { id } = req.query;
 
   if (req.method === 'GET') {
-    const peluche = getPeluche(id);
+    const peluche = await getPeluche(id);
     if (!peluche) {
       return res.status(404).json({ success: false, error: 'Peluche no encontrado' });
     }
@@ -14,4 +12,4 @@ export default function handler(req, res) {
   }
 
   return res.status(405).json({ success: false, error: 'Método no permitido' });
-}
+};

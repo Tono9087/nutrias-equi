@@ -1,19 +1,16 @@
-import { getLecturas } from '../storage';
+const { getLecturas } = require('../storage');
 
-export default function handler(req, res) {
-  const {
-    query: { id },
-    method
-  } = req;
+module.exports = async function handler(req, res) {
+  const { id } = req.query;
 
-  if (method === 'GET') {
+  if (req.method === 'GET') {
     const limit = parseInt(req.query.limit || '0', 10);
-    let datos = getLecturas(id);
+    let datos = await getLecturas(id);
     if (limit > 0) {
-      datos = datos.slice(-limit);
+      datos = datos.slice(0, limit); // Redis lrange returns newest-first (lpush)
     }
     return res.status(200).json({ success: true, data: datos });
   }
 
   return res.status(405).json({ success: false, error: 'Método no permitido' });
-}
+};
