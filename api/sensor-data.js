@@ -76,14 +76,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // Verificar que el peluche existe en el almacenamiento en memoria
-    const peluche = getPeluche(pelucheId);
-    if (!peluche) {
-      return res.status(404).json({
-        success: false,
-        error: 'Peluche no encontrado. Por favor vincúlalo primero en la aplicación web.'
-      });
-    }
+    // Eliminar la restricción de que el peluche debe existir en memoria
+    // ya que Vercel borra la memoria entre ejecuciones (cold starts / serverless).
+    // Si la placa manda un POST, simplemente aceptamos y guardamos la lectura.
 
     // Guardar la lectura en el almacenamiento local (solo registros altos >= 30)
     addLectura(pelucheId, {

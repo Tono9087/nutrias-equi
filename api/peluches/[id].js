@@ -6,9 +6,27 @@ export default function handler(req, res) {
   } = req;
 
   if (req.method === 'GET') {
-    const peluche = getPeluche(id);
+    let peluche = getPeluche(id);
     if (!peluche) {
-      return res.status(404).json({ success: false, error: 'Peluche no encontrado' });
+      // In Vercel serverless, memory is cleared between cold starts.
+      // If we ask for a peluche and it's not in memory, we automatically recreate it 
+      // with default values so the frontend doesn't crash with a 404.
+      const configObj = {
+        nombreUsuario: 'Usuario',
+        contactosEmergencia: [],
+        umbralAlerta: 70,
+        preferenciasSonido: 'naturaleza',
+        fechaVinculacion: new Date().toISOString(),
+        activo: true,
+        codigo: id
+      };
+      
+      // Auto-recreate in memory
+      import('../storage').then(({ addPeluche }) => {
+        addPeluche(id, configObj);
+      }).catch(e => console.error("Could not dynamic import storage", e));
+      
+      peluche = configObj;
     }
     return res.status(200).json({ success: true, data: peluche });
   }
