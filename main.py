@@ -260,13 +260,18 @@ else:
                 # enviar la lectura al backend en la nube
                 if urequests and BACKEND_URL:
                     try:
-                        url = BACKEND_URL.rstrip('/') + '/api/sensor-data'
+                        url = BACKEND_URL.rstrip('/') + '/api/sensor'
                         hdr = {'Content-Type': 'application/json'}
                         payload = json.dumps({
-                            'pelucheId': PELUCHE_ID,
-                            'presion': presion
+                            'device_id': PELUCHE_ID,
+                            'pressure': presion
                         })
                         resp = urequests.post(url, data=payload, headers=hdr)
+                        
+                        # IMPRESIONES DE DIAGNÓSTICO PARA VERCEL
+                        print("Respuesta de Vercel Código:", resp.status_code)
+                        print("Texto de Vercel:", resp.text)
+                        
                         resp.close()
                         print('POST Vercel [', PELUCHE_ID, '] Presión:', presion, '% |', estado_info['estado'])
                     except Exception as ec:
