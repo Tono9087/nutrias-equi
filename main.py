@@ -22,6 +22,10 @@ sensor = ADC(Pin(PIN_SENSOR))
 sensor.atten(ADC.ATTN_11DB)  # Rango completo 0-3.3V
 sensor.width(ADC.WIDTH_12BIT)  # Resolución de 12 bits (0-4095)
 
+# ===== LED INDICADOR WIFI (D12 / GPIO12) =====
+led_wifi = Pin(PIN_LED_WIFI, Pin.OUT)
+led_wifi.value(0)  # Apagado por defecto
+
 # ===== FUNCIONES PRINCIPALES =====
 
 def leer_presion():
@@ -127,6 +131,7 @@ def conectar_wifi():
         print('IP:', config[0])
         print('Máscara:', config[1])
         print('Gateway:', config[2])
+        led_wifi.value(1)  # Encender LED: WiFi conectado
         return wifi
     else:
         print('Error: No se pudo conectar a WiFi')

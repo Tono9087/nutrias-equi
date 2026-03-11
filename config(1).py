@@ -17,6 +17,7 @@ WIFI_PASSWORD = '123456791011'
 
 # ===== CONFIGURACIÓN DEL SENSOR =====
 PIN_SENSOR = 34  # GPIO34 para lectura analógica
+PIN_LED_WIFI = 12  # GPIO12 (D12) - LED indicador de conexión WiFi
 
 # ===== UMBRALES DE ANSIEDAD =====
 # Ajusta estos valores según pruebas con el FSR402
