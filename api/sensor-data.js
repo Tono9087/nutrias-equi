@@ -42,6 +42,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('[DEBUG API] Peticion POST recibida en /api/sensor-data');
+    console.log('[DEBUG API] Body crudo:', req.body);
+
     const { pelucheId, presion } = req.body;
 
     // Validar datos recibidos

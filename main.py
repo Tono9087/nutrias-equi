@@ -139,6 +139,7 @@ def iniciar_servidor():
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(('0.0.0.0', PUERTO_API))
     s.listen(1)
+    s.setblocking(False) # Evita que accept() pause el código de ESP32 para siempre
     print('Servidor API activo en puerto', PUERTO_API)
     return s
 
@@ -200,57 +201,92 @@ else:
     print('Accede a la API en: http://' + wifi.ifconfig()[0])
     print('='*40 + '\n')
     
+    # Compatibilidad para linter / entorno local (PC) con funciones de MicroPython
+    if hasattr(time, 'ticks_ms'):
+        def ticks_ms() -> int:
+            return getattr(time, 'ticks_ms')()
+        def ticks_diff(ticks1: int, ticks2: int) -> int:
+            return getattr(time, 'ticks_diff')(ticks1, ticks2)
+    else:
+        def ticks_ms() -> int:
+            return int(time.time() * 1000)
+        def ticks_diff(ticks1: int, ticks2: int) -> int:
+            return ticks1 - ticks2
+
     # ===== LOOP PRINCIPAL =====
+    ultimo_envio = ticks_ms()
+    ultimo_print = ticks_ms()
     while True:
         try:
-            # Aceptar conexión
-            cliente, direccion = servidor.accept()
-            
-            # Leer request (opcional, no procesamos el contenido)
-            request = cliente.recv(1024)
-            
-            # Leer presión y detectar estado
-            presion = leer_presion()
-            estado_info = detectar_estado(presion)
-            
-            # Preparar datos de respuesta con identificador del peluche
-            datos = {
-                'peluche_id': PELUCHE_ID,
-                'peluche_nombre': PELUCHE_NOMBRE,
-                'presion': presion,
-                'estado': estado_info['estado'],
-                'nivel': estado_info['nivel'],
-                'descripcion': estado_info['descripcion'],
-                'timestamp': time.time()
-            }
-            
-            # Enviar respuesta local
-            respuesta = generar_respuesta_http(datos)
-            cliente.send(respuesta.encode())
-
-            # enviar la lectura al backend en la nube
-            if urequests and BACKEND_URL:
+            # 1. Intentar aceptar conexión local (responder si nos preguntan de forma local)
+            try:
+                cliente, direccion = servidor.accept()
+                cliente.settimeout(1.0) # timeout corto para evitar bloqueos
                 try:
-                    url = BACKEND_URL.rstrip('/') + '/api/sensor'
-                    hdr = {'Content-Type': 'application/json'}
-                    payload = json.dumps({
-                        'device_id': PELUCHE_ID,
-                        'pressure': presion
-                    })
-                    resp = urequests.post(url, data=payload, headers=hdr)
-                    resp.close()
-                except Exception as ec:
-                    print('Error enviando datos a la nube:', ec)
+                    request = cliente.recv(1024)
+                except OSError:
+                    pass
+                
+                presion = leer_presion()
+                estado_info = detectar_estado(presion)
+                
+                # Preparar datos de respuesta con identificador del peluche
+                datos = {
+                    'peluche_id': PELUCHE_ID,
+                    'peluche_nombre': PELUCHE_NOMBRE,
+                    'presion': presion,
+                    'estado': estado_info['estado'],
+                    'nivel': estado_info['nivel'],
+                    'descripcion': estado_info['descripcion'],
+                    'timestamp': time.time()
+                }
+                
+                # Enviar respuesta local
+                respuesta = generar_respuesta_http(datos)
+                cliente.send(respuesta.encode())
+                cliente.close()
+            except OSError:
+                # No hay clientes conectados localmente, ignorar.
+                pass
+                
+            # 2. Enviar datos a la nube (Vercel) periódicamente cada 1 segundo (1000ms)
+            ahora = ticks_ms()
+            if ticks_diff(ahora, ultimo_envio) >= 1000:
+                ultimo_envio = ahora
+                
+                presion = leer_presion()
+                estado_info = detectar_estado(presion)
+                
+                # enviar la lectura al backend en la nube
+                if urequests and BACKEND_URL:
+                    try:
+                        url = BACKEND_URL.rstrip('/') + '/api/sensor-data'
+                        hdr = {'Content-Type': 'application/json'}
+                        payload = json.dumps({
+                            'pelucheId': PELUCHE_ID,
+                            'presion': presion
+                        })
+                        resp = urequests.post(url, data=payload, headers=hdr)
+                        resp.close()
+                        print('POST Vercel [', PELUCHE_ID, '] Presión:', presion, '% |', estado_info['estado'])
+                    except Exception as ec:
+                        print('Error enviando datos a la nube:', ec)
+                        
+            # 3. Imprimir por consola cada 5 segundos
+            if ticks_diff(ahora, ultimo_print) >= 5000:
+                ultimo_print = ahora
+                # No necesitamos leer_presion() de nuevo si ya la tenemos del ciclo actual arriba 
+                # (pero para estar seguros, la leemos para el debug)
+                presion_actual = leer_presion()
+                print(f"[DEBUG] Presión actual del sensor: {presion_actual}%")
             
-            # Cerrar conexión
-            cliente.close()
-            
-            # Debug opcional
-            print('[' + PELUCHE_ID + '] Presión:', str(presion) + '% | Estado:', estado_info['estado'])
+            # Pausa de 100ms para ahorrar ciclos de CPU
+            time.sleep(0.1)
             
         except Exception as e:
-            print('Error:', e)
+            print('Error general en el loop:', e)
             try:
                 cliente.close()
             except:
                 pass
+            time.sleep(1)
